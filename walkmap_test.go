@@ -137,3 +137,53 @@ func TestWalkNested(t *testing.T) {
 		}
 	}
 }
+
+func TestWalkNestedMixedTypes(t *testing.T) {
+	data := map[interface{}]interface{}{
+		"foo": "1",
+		"bar": "2",
+		"baz": "3",
+		"nested": map[string]interface{}{
+			"fooNested": "4",
+			"barNested": "5",
+			"bazNested": "6",
+			"evenMoreNested": map[interface{}]interface{}{
+				"fooEvenMoreNested": "7",
+				"barEvenMoreNested": "8",
+				"bazEvenMoreNested": "9",
+			},
+		},
+	}
+
+	got := map[string]interface{}{}
+
+	concatenatePath := func(paths []interface{}) string {
+		strPaths := make([]string, 0, len(paths))
+
+		for _, path := range paths {
+			strPaths = append(strPaths, path.(string))
+		}
+
+		return strings.Join(strPaths, ".")
+	}
+
+	Walk(data, func(keyPath []interface{}, value interface{}, kind reflect.Kind) {
+		pathStr := concatenatePath(keyPath)
+		got[pathStr] = value
+	})
+
+	if len(got) != 9 {
+		t.Fatalf("Expected outmap to be of size %d, got %d", 9, len(got))
+	}
+
+	for key, val := range got {
+		exp, err := jsonpath.Get(key, data)
+		if err != nil {
+			t.Fatalf("Expected err to be nil, got: %s", err)
+		}
+
+		if exp != val {
+			t.Fatalf("Expected %s, got %s", exp, val)
+		}
+	}
+}
